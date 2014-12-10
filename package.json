@@ -1,0 +1,20 @@
+{
+  "name": "ftp-app",
+  "version": "0.0.1",
+  "description": "transfer remote resources to server via ftp",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "akamaozu",
+  "license": "ISC",
+  "dependencies": {
+    "cjs-noticeboard": "0.0.2",
+    "express": "^4.10.4",
+    "ftp": "^0.3.8",
+    "request": "^2.51.0"
+  },
+  "devDependencies": {
+    "grunt-cli": "^0.1.13"
+  }
+}
