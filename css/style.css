@@ -1,0 +1,117 @@
+body{
+  
+  font-family: arial, helvetica, sans-serif;
+  font-size: 16px;
+  background-color: #eee;
+}
+
+  #app-wrapper{
+
+    width: 95%;
+    margin: 2em auto;
+    position: relative;
+    background-color: #fff;
+  }
+
+  #main-header {
+
+    display: block;
+    position: relative;
+    margin-bottom: 2em;
+    overflow: hidden;
+  }
+
+    #main-header .logo{
+
+      display: block;
+      max-width: 65%;
+      position: relative;
+      margin: 1.5em auto;
+    }
+
+    #main-header .title{
+
+      width: 90%;
+      display: block;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: -1px;
+      line-height: 1em;
+      font-weight: 900;
+      font-size: 2.2em;
+      color: #477;
+      margin: 1em auto;
+    }
+
+    #main-header .subtitle{
+
+      letter-spacing: -1px;
+      text-align: center;
+      font-size: 1.25em;
+      margin: 0 auto;
+      color: #799;
+      width: 90%;
+    }
+
+  #task-wrapper {
+
+    width: 85%;
+    margin: 1em auto;
+  }
+
+    #task-wrapper input {
+
+      width: 85%;
+      display: block;
+      margin: .75em auto;
+      padding: .75em 5%;
+      font-size: 1.25em;
+    }
+
+    #task-wrapper .btn-wrapper{
+
+      text-align: center;
+      padding-bottom: 2em;
+    }
+
+      #task-wrapper #push-url{
+
+        cursor: hand;
+
+        display: inline-block;
+        margin: .5em auto;
+        padding: .5em 1.5em;
+
+        text-align: center;
+        text-transform: uppercase;
+        font-weight: 900;
+
+        background-color: #04a737;
+        color: #fff;
+
+        border-bottom: .55em solid #048434;
+        border-radius: .4em .4em .5em .5em;
+        text-shadow: 1px 1px 2px #024316;
+
+        -webkit-transition: all .1s ease-in;
+        -moz-transition: all .1s ease-in;
+        -ms-transition: all .1s ease-in;
+        -o-transition: all .1s ease-in;
+        transition: all .1s ease-in;
+      }
+
+        #task-wrapper #push-url:hover{
+
+          margin-top: .72em;
+          border-color: #036327;
+          background-color: #049632;
+          border-bottom-width: .33em;
+        }
+
+        #task-wrapper #push-url:active{
+
+          margin-top: .94em;
+          border-color: #02421a;
+          background-color: #03862c;
+          border-bottom-width: .11em;
+        }

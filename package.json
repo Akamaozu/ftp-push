@@ -4,7 +4,8 @@
   "description": "transfer remote resources to server via ftp",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "grunt && node server.js"
   },
   "author": "akamaozu",
   "license": "ISC",
@@ -12,9 +13,14 @@
     "cjs-noticeboard": "0.0.2",
     "express": "^4.10.4",
     "ftp": "^0.3.8",
+    "normalize.css": "^3.0.2",
     "request": "^2.51.0"
   },
   "devDependencies": {
-    "grunt-cli": "^0.1.13"
+    "glob": "^4.3.1",
+    "grunt": "^0.4.5",
+    "grunt-cli": "^0.1.13",
+    "grunt-html-build": "^0.3.2",
+    "load-grunt-tasks": "^1.0.0"
   }
 }

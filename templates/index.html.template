@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+  <head>
+    <title>FTP PUSH</title>    
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
+
+    <!-- build:style inline bundle -->
+      <!-- /build -->
+  </head>
+
+  <body>
+    <div id="app-wrapper">
+
+      <div id="main-header">
+        <img class='logo' src='img/logo.png'>
+        <div class='title'>TRANSFER MOVIES TO THE SERVER</div>
+        <div class='subtitle'>Save Your MBs - My Server Can Handle It</div>
+      </div>
+
+      <div id="task-wrapper">
+        <input placeholder="Paste Movie URL Here" />
+        <div class="btn-wrapper">
+          <span id="push-url">SEND IT</span>
+        </div>        
+      </div>
+
+    </div>
+  </body>
+</html>
