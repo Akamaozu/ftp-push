@@ -76,7 +76,7 @@ body{
 
       #task-wrapper #push-url{
 
-        cursor: hand;
+        cursor: pointer;
 
         display: inline-block;
         margin: .5em auto;
@@ -102,10 +102,10 @@ body{
 
         #task-wrapper #push-url:hover{
 
-          margin-top: .72em;
+          margin-top: .61em;
           border-color: #036327;
           background-color: #049632;
-          border-bottom-width: .33em;
+          border-bottom-width: .44em;
         }
 
         #task-wrapper #push-url:active{
