@@ -5,6 +5,11 @@ body{
   background-color: #eee;
 }
 
+.hidden {
+
+  display: none;
+}
+
   #app-wrapper{
 
     width: 95%;
@@ -53,13 +58,16 @@ body{
       width: 90%;
     }
 
-  #task-wrapper {
+  #task-wrapper,
+  #update-wrapper {
 
     width: 85%;
-    margin: 1em auto;
+    margin: 1em auto;    
+    padding-bottom: 2em;
   }
 
-    #task-wrapper input {
+    #task-wrapper input,
+    #update-wrapper input {
 
       width: 85%;
       display: block;
@@ -71,7 +79,6 @@ body{
     #task-wrapper .btn-wrapper{
 
       text-align: center;
-      padding-bottom: 2em;
     }
 
       #task-wrapper #push-url{

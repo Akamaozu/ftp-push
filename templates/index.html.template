@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
 
     <!-- build:style inline bundle -->
-      <!-- /build -->
+    <!-- /build -->
   </head>
 
   <body>
@@ -18,12 +18,21 @@
       </div>
 
       <div id="task-wrapper">
-        <input placeholder="Paste Movie URL Here" />
+        <input id="url-to-push" placeholder="Paste Movie URL Here" />
+        <input id="filename" placeholder="Movie Name Goes Here" />
         <div class="btn-wrapper">
           <span id="push-url">SEND IT</span>
         </div>        
       </div>
 
+      <div id="update-wrapper" class="hidden">
+        <label>FILE LOCATION ON YOUR SERVER</label>
+        <input id="url-to-use" />        
+      </div>
+
     </div>
+
+    <!-- build:script inline bundle -->
+    <!-- /build -->
   </body>
 </html>

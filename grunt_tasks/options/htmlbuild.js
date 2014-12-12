@@ -6,8 +6,12 @@ module.exports = {
         options: {
             
             styles: {
-                bundle: ['./node_modules/normalize.css/normalize.css', '<%= stylesDir %>/*'],
+                bundle: ['./node_modules/normalize.css/normalize.css', '<%= stylesDir %>/*']
             },
+
+            scripts: {
+            	bundle: ['./temp/js/browserified.js']
+            }
         }
     }
 }
