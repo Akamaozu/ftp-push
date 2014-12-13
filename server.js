@@ -113,6 +113,14 @@ var express, ftp, fs, request, noticeboard, bodyparser, multer, path,
 
           app.log('\n"/push/" ENDPOINT HIT', '\n  | \n  |-> payload\n\n', req.body);
 
+          // prevent response from being cached
+            res.set({
+
+              'Cache-Control': 'no-cache, no-store, must-revalidate'
+              'Pragma': 'no-cache'
+              'Expires': '0'
+            });
+
           // filter
             if(!req.body.resource){ 
 
