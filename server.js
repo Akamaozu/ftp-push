@@ -1,7 +1,8 @@
-var express, ftp, fs, request, noticeboard, bodyparser, multer, path,
+var express, ftp, fs, request, compression, noticeboard, bodyparser, multer, path,
     server, app;
 
     noticeboard = require('cjs-noticeboard');
+    compression = require('compression');
     bodyparser = require('body-parser');
     express = require('express');
     request = require('request');
@@ -65,6 +66,9 @@ var express, ftp, fs, request, noticeboard, bodyparser, multer, path,
 
 // configure server
     server = express();
+
+    // compress responses
+        server.use( compression() );
 
     // handle incoming requests
         server.use(bodyparser.urlencoded({ extended: true }));

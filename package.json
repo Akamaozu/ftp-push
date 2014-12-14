@@ -14,11 +14,11 @@
   "dependencies": {
     "body-parser": "^1.10.0",
     "cjs-noticeboard": "0.0.2",
+    "compression": "^1.2.2",
     "express": "^4.10.4",
     "ftp": "^0.3.8",
     "multer": "^0.1.6",
     "normalize.css": "^3.0.2",
-    "path": "^0.4.9",
     "request": "^2.51.0"
   },
   "devDependencies": {
