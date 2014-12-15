@@ -49,7 +49,7 @@
                     addClass(document.getElementById('task-wrapper'), 'hidden');
                     removeClass(document.getElementById('update-wrapper'), 'hidden');
 
-                    document.getElementById('url-to-use').value = url;
+                    document.getElementById('url-to-use').value = report.url;
                 }
             });
 
