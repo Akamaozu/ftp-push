@@ -12,14 +12,14 @@
   "author": "akamaozu",
   "license": "ISC",
   "dependencies": {
-    "body-parser": "^1.10.0",
     "cjs-noticeboard": "0.0.2",
     "compression": "^1.2.2",
     "express": "^4.10.4",
     "ftp": "^0.3.8",
-    "multer": "^0.1.6",
     "normalize.css": "^3.0.2",
-    "request": "^2.51.0"
+    "request": "^2.51.0",
+    "socket.io": "^1.2.1",
+    "socket.io-client": "^1.2.1"
   },
   "devDependencies": {
     "glob": "^4.3.1",

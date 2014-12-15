@@ -1,12 +1,15 @@
-var express, ftp, fs, request, compression, noticeboard, bodyparser, multer, path,
-    server, app;
+var express, http, socketio, ftp, 
+    fs, request, compression, noticeboard, path, 
+    server, app, io;
 
     noticeboard = require('cjs-noticeboard');
     compression = require('compression');
     bodyparser = require('body-parser');
-    express = require('express');
+    socketio = require('socket.io');
+    express = require('express')();
     request = require('request');
     multer = require('multer');
+    http = require('http');
     path = require('path');
     ftp = require('ftp');
     fs = require('fs');
@@ -65,14 +68,10 @@ var express, ftp, fs, request, compression, noticeboard, bodyparser, multer, pat
         });
 
 // configure server
-    server = express();
+    server = http.Server( express );
 
     // compress responses
-        server.use( compression() );
-
-    // handle incoming requests
-        server.use(bodyparser.urlencoded({ extended: true }));
-        server.use(multer());
+        express.use( compression() );
 
     // start server
         app.watch('html-loaded', 'start-server', function(){
@@ -83,7 +82,7 @@ var express, ftp, fs, request, compression, noticeboard, bodyparser, multer, pat
         });
 
     // root path
-        server.get('/', function(req, res){
+        express.get('/', function(req, res){
 
             var process = 'express';
 
@@ -102,13 +101,13 @@ var express, ftp, fs, request, compression, noticeboard, bodyparser, multer, pat
         });
 
     // img dir path
-        server.get('/img/:image', function(req, res){ 
+        express.get('/img/:image', function(req, res){ 
 
           res.sendFile(req.params.image, {root: __dirname + '/img/'});
         });
 
     // push path
-        server.post('/push/', function(req, res){ 
+        express.post('/push/', function(req, res){ 
 
             var report, filename, extension;
 
@@ -180,6 +179,15 @@ var express, ftp, fs, request, compression, noticeboard, bodyparser, multer, pat
                 }, 'express-push-endpoint');
               }
             });
+        });
+
+// configure socket
+    io = socketio( server );
+
+    // new connection
+        
+        io.on('connection', function(socket){
+          app.log('a user connected');
         });
 
 // load html

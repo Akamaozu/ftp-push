@@ -1,8 +1,9 @@
 (function(){
 
-    var noticeboard, app;
+    var noticeboard, app, socketio;
 
         noticeboard = require('cjs-noticeboard');
+        socketio = require('socket.io-client')();
         
     // init app
         app = new noticeboard();
