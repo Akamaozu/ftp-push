@@ -64,6 +64,15 @@
         if(!url_to_push){ alert('you haven\'t given me a URL to push'); return; }
 
         socketio.emit('ftp-push', {resource: url_to_push, rename: new_filename});
+
+        addClass(document.getElementById('push-url'), 'hidden');
+    });
+
+    document.getElementById('url-to-use').addEventListener('focus', function(){
+
+        var this_input = this;
+
+        this_input.select();
     });
 
 // check if class exists
