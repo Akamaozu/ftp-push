@@ -107,7 +107,8 @@ body{
         transition: all .1s ease-in;
       }
 
-        #task-wrapper #push-url:hover{
+        #task-wrapper #push-url:hover,
+        #task-wrapper #push-url:focus{
 
           margin-top: .61em;
           border-color: #036327;
