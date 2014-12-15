@@ -59,6 +59,10 @@ var express, http, socketio, ftp,
           // clean file name
             filename = filename.replace(/[^a-zA-Z0-9]/g,'_').replace(/_{2,}/g,"_").toLowerCase();
 
+          // update requester
+            report.msg = "downloading file to my server -- this may take a moment"
+            requester.emit('status', report);
+
           // fetch remote resource
             request({
 
