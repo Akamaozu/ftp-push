@@ -206,7 +206,7 @@ var express, http, socketio, ftp,
   fs.readFile('./ftpcredentials.json', 'utf8', function(err, data){
     if (err){
       
-      app.log('\nERROR: FTPCREDENTIALS NOT LOADED', '\n  | \n  |-> fs.readFile\n\n', err); 
+      app.log('\nERROR: FTPCREDENTIALS NOT LOADED', '\n  | \n  |-> fs.readFile(\'./ftpcredentials.json\')\n\n', err); 
       return; 
     }
 
