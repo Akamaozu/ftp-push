@@ -31,19 +31,26 @@
                     }
             });
 
-        // handle push endpoint response
-            app.watch('push-endpoint-response', 'push-response-handler', function(msg){
+    // configure socket  
 
-                var response = JSON.parse(msg.notice);
+        // status report
+            socketio.on('status', function(report){
 
-                if(!response.success){ alert(response.msg); return; }
+                var success, completed, message, state;
 
-                alert(response.msg);
+                    completed = report.completed;
+                    success = report.success;
+                    message = report.msg;
 
-                document.getElementById('url-to-use').value = response.url;
+                alert( message );
 
-                addClass(document.getElementById('task-wrapper'), 'hidden');
-                removeClass(document.getElementById('update-wrapper'), 'hidden');
+                if(success){
+
+                    addClass(document.getElementById('task-wrapper'), 'hidden');
+                    removeClass(document.getElementById('update-wrapper'), 'hidden');
+
+                    document.getElementById('url-to-use').value = url;
+                }
             });
 
 
@@ -56,43 +63,7 @@
 
         if(!url_to_push){ alert('you haven\'t given me a URL to push'); return; }
 
-        var ajax;
-        
-        // code for IE7+, Firefox, Chrome, Opera, Safari
-        if (window.XMLHttpRequest){
-            ajax=new XMLHttpRequest();
-        }
-        
-        // code for IE6, IE5
-        else{
-          ajax=new ActiveXObject("Microsoft.XMLHTTP");
-        }
-
-        ajax.open('POST', '/push', true);
-        ajax.setRequestHeader("Content-type","application/x-www-form-urlencoded");
-        
-        ajax.onreadystatechange = function(){
-
-            // filter uncompleted responses
-            if (ajax.readyState !=4){ return; }
-
-            // success
-            if ( ajax.status > 199 && ajax.status < 400 ){ 
-
-                app.notify('push-endpoint-response', ajax.responseText, 'push-endpoint-ajax'); 
-            }
-
-            // fail
-            else{ 
-
-                alert('my server didn\'t get it -- please try again');
-
-                app.log('FAILED AJAX\n', ajax); 
-            }                      
-        };
-
-        ajax.send('resource=' + url_to_push + '&rename=' + new_filename);
-        alert('pushing it to my server!');
+        socketio.emit('ftp-push', {resource: url_to_push, rename: new_filename});
     });
 
 // check if class exists

@@ -37,6 +37,72 @@ var express, http, socketio, ftp,
                         break;
                 }
         });
+
+    // handle ftp-push request
+        app.watch('push-request', 'ftp-pusher', function(msg){ 
+
+          var request_struct, 
+              requester, resource, filename, extension,
+              report;
+              
+              report = {};
+              report.completed = false;
+              report.success = false;
+
+              request_struct = msg.notice;
+
+              filename = request_struct.rename || path.basename(request_struct.resource);
+              extension = path.extname(request_struct.resource);
+              requester = request_struct.requester;
+              resource = request_struct.resource;
+
+          // clean file name
+            filename = filename.replace(/[^a-zA-Z0-9]/g,'_').replace(/_{2,}/g,"_").toLowerCase();
+
+          // fetch remote resource
+            request({
+
+              url: resource,
+              encoding: null
+
+            }, function (error, response, body) {
+              
+              if(error){
+                
+                report.completed = true;
+                report.msg = 'could not download it -- try again please';
+                
+                requester.emit('status', report);
+              }
+
+              else{
+
+
+                var now = new Date();
+
+                var year = now.getFullYear();
+                var month = now.getMonth() + 1;
+                    month = (month < 10 ? "0" : "") + month;
+                
+                var path = 'wp-content/uploads/' + year + '/' + month + '/';
+                var file = filename + '_wadup_com_ng' + extension;
+
+
+                report.completed = false;
+                report.msg = 'downloaded to my server -- now pushing to yours';
+                report.url = 'http://wadup.com.ng/' + path + file;
+                
+                requester.emit('status', report);
+
+                app.notify('resource-downloaded', {
+                  
+                  content: body,
+                  path: 'wp-content/uploads/' + year + '/' + month + '/' + file,
+                  requester: requester
+                }, 'express-push-endpoint');
+              }
+            });
+        });
   
     // do ftp-push
         app.watch('resource-downloaded', 'ftp-pusher', function(msg){
@@ -46,13 +112,21 @@ var express, http, socketio, ftp,
           resource_struct = msg.notice;
           ftp_client = new ftp();
             
-          ftp_client.on('ready', function() {
+          ftp_client.on('ready', function(){
 
-            ftp_client.put( resource_struct.content, resource_struct.path + resource_struct.name, function(err) {
+            ftp_client.put( resource_struct.content, resource_struct.path, function(err) {
               
               if (err) throw err;
               ftp_client.end();
-              app.log('PUSH SUCCESSFUL!\n', resource_struct.path + resource_struct.name);
+              
+              resource_struct.requester.emit('status', {
+
+                url: 'http://wadup.com.ng/' +  resource_struct.path,
+                msg: 'PUSH SUCCESSFUL!',
+                success: true,
+                completed: true
+              });
+
             });
           });
 
@@ -106,88 +180,23 @@ var express, http, socketio, ftp,
           res.sendFile(req.params.image, {root: __dirname + '/img/'});
         });
 
-    // push path
-        express.post('/push/', function(req, res){ 
-
-            var report, filename, extension;
-
-            report = {};
-            report.success = false;
-
-          app.log('\n"/push/" ENDPOINT HIT', '\n  | \n  |-> payload\n\n', req.body);
-
-          // prevent response from being cached
-            res.set({
-
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              'Pragma': 'no-cache',
-              'Expires': '0'
-            });
-
-          // filter
-            if(!req.body.resource){ 
-
-              report.msg = 'malformed request -- nothing will be pushed';
-              res.send( report );
-              return;
-            }
-
-            filename = req.body.rename || path.basename(req.body.resource);
-            extension = path.extname(req.body.resource);
-
-          // clean file name
-            filename = filename.replace(/[^a-zA-Z0-9]/g,'_').replace(/_+/g,"_").toLowerCase();
-
-          // fetch remote resource
-            request({
-
-              url:req.body.resource,
-              encoding: null
-
-            }, function (error, response, body) {
-              
-              if(error || response.statusCode !== 200){
-                
-                report.msg = 'could not download it -- try again please';
-                res.send( report );
-              }
-
-              else{
-
-
-                var now = new Date();
-
-                var year = now.getFullYear();
-                var month = now.getMonth() + 1;
-                month = (month < 10 ? "0" : "") + month;
-                var path = 'wp-content/uploads/' + year + '/' + month + '/';
-                var file = filename + '_wadup_com_ng' + extension;
-
-
-                report.success = true;
-                report.msg = 'downloaded to my server -- now pushing to yours';
-                report.url = 'http://wadup.com.ng/' + path + file;
-                res.send( report );
-
-                app.notify('resource-downloaded', {
-                  
-                  content: body,
-                  year: year,
-                  month: month,
-                  path: 'wp-content/uploads/' + year + '/' + month + '/',
-                  name: file
-                }, 'express-push-endpoint');
-              }
-            });
-        });
-
 // configure socket
     io = socketio( server );
 
-    // new connection
-        
+    // new connection        
         io.on('connection', function(socket){
-          app.log('a user connected');
+          
+          // message from connection
+              socket.on('ftp-push', function(request){
+
+                var this_socket = this;
+
+                app.log('PUSH REQUEST:', request);
+
+                request.requester = this_socket;
+
+                app.notify('push-request', request, 'socket.io');
+              });
         });
 
 // load html
