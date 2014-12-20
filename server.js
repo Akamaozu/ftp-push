@@ -56,9 +56,6 @@ var express, http, socketio, ftp,
               requester = request_struct.requester;
               resource = request_struct.resource;
 
-          // clean file name
-            filename = filename.replace(/[^a-zA-Z0-9]/g,'_').replace(/_{2,}/g,"_").toLowerCase();
-
           // update requester
             report.msg = "downloading file to my server -- this may take a moment"
             requester.emit('status', report);
@@ -89,8 +86,8 @@ var express, http, socketio, ftp,
                     month = (month < 10 ? "0" : "") + month;
                 
                 var path = 'wp-content/uploads/' + year + '/' + month + '/';
-                var file = filename + '_wadup_com_ng' + extension;
-
+                var file = (filename + '_wadup_com_ng').replace(/[^a-zA-Z0-9]/g,'_').replace(/_{2,}/g,"_").toLowerCase(); 
+                    file = file + extension;
 
                 report.completed = false;
                 report.msg = 'downloaded to my server -- now pushing to yours';
