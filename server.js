@@ -1,6 +1,6 @@
 var express, http, socketio, ftp, 
     fs, request, compression, noticeboard, path, 
-    server, app, io;
+    server, app, logger, io;
 
     noticeboard = require('cjs-noticeboard');
     compression = require('compression');
@@ -15,10 +15,11 @@ var express, http, socketio, ftp,
     fs = require('fs');
 
 // configure app
-    app = new noticeboard();
+    app = new noticeboard({logging: false});
+    logger = new noticeboard();
 
-    // pipe app log to console
-        app.watch('log-entry', 'node-console', function(msg){
+    // pipe logger to console
+        logger.watch('log-entry', 'node-console', function(msg){
 
             var entry = msg.notice;
 
@@ -158,6 +159,22 @@ var express, http, socketio, ftp,
           }, {message: html});
         },{useCache: true});
 
+    // process logo request
+        app.once('logo-loaded', 'setup-logo-request-handler', function(data){
+
+          var logo = data.notice;
+
+          app.watch('logo-requested', 'logo-request-handler', function(msg){
+
+            var request, logo;
+                request = msg.notice;
+                logo = msg.watcher;
+
+            request.send( logo );
+
+          }, {message: logo});
+        },{useCache: true});
+
 // configure server
     server = http.Server( express );
 
@@ -169,7 +186,7 @@ var express, http, socketio, ftp,
 
             server.listen(3000);
 
-            app.log('SERVER STARTED!');
+            logger.log('SERVER STARTED!');
         });
 
     // root path
@@ -186,16 +203,27 @@ var express, http, socketio, ftp,
             app.notify('html-requested', response, process);
         });
 
-    // img dir path
-        express.get('/img/:image', function(req, res){ 
+    // logo path
+        express.get('/img/logo.png', function(request, response){
 
-          res.sendFile(req.params.image, {root: __dirname + '/img/'});
+            var process, expires_duration;
+                process = 'express';
+                expires_duration = 60 * 60 * 24 * 5; // 5 Days
+
+            // set type header
+                response.type('png');
+
+            // set cache control headers
+                response.set('Cache-Control', 'max-age=' + expires_duration );
+                response.set('Expires', new Date( (Date.now() + (expires_duration * 1000)) ).toUTCString());
+
+            app.notify('logo-requested', response, process);
         });
 
 // configure socket
     io = socketio( server );
 
-    // new connection        
+    // new connection
         io.on('connection', function(socket){
           
           // message from connection
@@ -203,11 +231,10 @@ var express, http, socketio, ftp,
 
                 var this_socket = this;
 
-                app.log('PUSH REQUEST:', request);
-
                 request.requester = this_socket;
-
                 app.notify('push-request', request, 'socket.io');
+
+                logger.log('PUSH REQUEST:', {url: request.resource, rename: request.rename});
               });
         });
 
@@ -216,18 +243,30 @@ var express, http, socketio, ftp,
 
         if(err){ 
         
-            app.log('\nERROR: HTML NOT LOADED', '\n  | \n  |-> fs.readFile\n\n', err); 
+            logger.log('\nERROR: HTML NOT LOADED', '\n  | \n  |-> fs.readFile(\'./bin/index.html\')\n\n', err); 
             return; 
         }
 
         else app.notify('html-loaded', html, 'fs-readfile');
     });
 
+// load logo
+    fs.readFile('./img/logo.png', function(err, binary){
+
+        if(err){ 
+        
+            logger.log('\nERROR: LOGO NOT LOADED', '\n  | \n  |-> fs.readFile(\'./img/logo.png\')\n\n', err); 
+            return; 
+        }
+
+        else app.notify('logo-loaded', binary, 'fs-readfile');
+    });
+
 // load ftp credentials
   fs.readFile('./ftpcredentials.json', 'utf8', function(err, data){
     if (err){
       
-      app.log('\nERROR: FTPCREDENTIALS NOT LOADED', '\n  | \n  |-> fs.readFile(\'./ftpcredentials.json\')\n\n', err); 
+      logger.log('\nERROR: FTPCREDENTIALS NOT LOADED', '\n  | \n  |-> fs.readFile(\'./ftpcredentials.json\')\n\n', err); 
       return; 
     }
 
