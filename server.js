@@ -103,7 +103,7 @@ var express, http, socketio, ftp,
                 }, 'express-push-endpoint');
               }
             });
-        });
+        });   
   
     // do ftp-push
         app.watch('resource-downloaded', 'ftp-pusher', function(msg){
@@ -142,6 +142,22 @@ var express, http, socketio, ftp,
           }, {useCache: true, message: ftp_client});
         });
 
+    // process html request
+        app.once('html-loaded', 'setup-html-request-handler', function(data){
+
+          var html = data.notice;
+
+          app.watch('html-requested', 'html-request-handler', function(msg){
+
+            var request, html;
+                request = msg.notice;
+                html = msg.watcher;
+
+            request.send( html );
+
+          }, {message: html});
+        },{useCache: true});
+
 // configure server
     server = http.Server( express );
 
@@ -157,22 +173,17 @@ var express, http, socketio, ftp,
         });
 
     // root path
-        express.get('/', function(req, res){
+        express.get('/', function(request, response){
 
-            var process = 'express';
+            var process, expires_duration;
+                process = 'express';
+                expires_duration = 60 * 5; // 5 Minutes
 
-            app.log('\n"/" PATH REQUESTED');
+            // set cache control headers
+                response.set('Cache-Control', 'max-age=' + expires_duration );
+                response.set('Expires', new Date( (Date.now() + (expires_duration * 1000)) ).toUTCString());
             
-            app.watch('html-loaded', process + ':serve-html', function(msg){
-
-                var response, html;
-
-                    response = msg.watcher;
-                    html = msg.notice;
-
-                response.send( html );
-            
-            }, {message: res, useCache: true});
+            app.notify('html-requested', response, process);
         });
 
     // img dir path
@@ -201,7 +212,7 @@ var express, http, socketio, ftp,
         });
 
 // load html
-    fs.readFile('./bin/index.html', 'utf8', function(err, data){
+    fs.readFile('./bin/index.html', 'utf8', function(err, html){
 
         if(err){ 
         
@@ -209,7 +220,7 @@ var express, http, socketio, ftp,
             return; 
         }
 
-        else app.notify('html-loaded', data, 'fs-readfile');
+        else app.notify('html-loaded', html, 'fs-readfile');
     });
 
 // load ftp credentials

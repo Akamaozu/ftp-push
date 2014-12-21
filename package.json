@@ -12,7 +12,7 @@
   "author": "akamaozu",
   "license": "ISC",
   "dependencies": {
-    "cjs-noticeboard": "0.0.2",
+    "cjs-noticeboard": "0.0.3",
     "compression": "^1.2.2",
     "express": "^4.10.4",
     "ftp": "^0.3.8",
