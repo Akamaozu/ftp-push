@@ -44,7 +44,7 @@ var express, http, socketio, ftp,
         app.watch('push-request', 'ftp-pusher', function(msg){ 
 
           var request_struct, 
-              requester, resource, filename,
+              requester, resource, filename, total_size, downloaded_so_far,
               report;
               
               report = {};
@@ -104,6 +104,18 @@ var express, http, socketio, ftp,
                   requester: requester
                 }, 'express-push-endpoint');
               }
+            }).on('response', function(response){
+
+              downloaded_so_far = 0;
+              total_size = response.headers['content-length'];
+
+              logger.log('total size: ' + total_size);
+            
+            }).on('data', function(data){
+
+              downloaded_so_far += data.length;
+
+              logger.log('progress: ' + downloaded_so_far + '/' + total_size + ' - ' + ((downloaded_so_far / total_size) * 100) + '%');
             });
         });   
   
