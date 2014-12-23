@@ -1,5 +1,5 @@
 var express, http, socketio, ftp, 
-    fs, request, compression, noticeboard, path, 
+    fs, request, compression, noticeboard, path, mime, 
     server, app, logger, io;
 
     noticeboard = require('cjs-noticeboard');
@@ -7,6 +7,7 @@ var express, http, socketio, ftp,
     bodyparser = require('body-parser');
     socketio = require('socket.io');
     express = require('express')();
+    mime = require('mime-types');
     request = require('request');
     multer = require('multer');
     http = require('http');
@@ -43,7 +44,7 @@ var express, http, socketio, ftp,
         app.watch('push-request', 'ftp-pusher', function(msg){ 
 
           var request_struct, 
-              requester, resource, filename, extension,
+              requester, resource, filename,
               report;
               
               report = {};
@@ -53,7 +54,7 @@ var express, http, socketio, ftp,
               request_struct = msg.notice;
 
               filename = request_struct.rename || path.basename(request_struct.resource);
-              extension = path.extname(request_struct.resource);
+              filename = (filename + '_wadup_com_ng').replace(/[^a-zA-Z0-9]/g,'_').replace(/_{2,}/g,"_").toLowerCase();
               requester = request_struct.requester;
               resource = request_struct.resource;
 
@@ -79,16 +80,16 @@ var express, http, socketio, ftp,
 
               else{
 
-
                 var now = new Date();
+
+                var extension = mime.extension( response.headers['content-type'] );
 
                 var year = now.getFullYear();
                 var month = now.getMonth() + 1;
                     month = (month < 10 ? "0" : "") + month;
                 
                 var path = 'wp-content/uploads/' + year + '/' + month + '/';
-                var file = (filename + '_wadup_com_ng').replace(/[^a-zA-Z0-9]/g,'_').replace(/_{2,}/g,"_").toLowerCase(); 
-                    file = file + extension;
+                var file = filename + '.' + extension;
 
                 report.completed = false;
                 report.msg = 'downloaded to my server -- now pushing to yours';
@@ -99,7 +100,7 @@ var express, http, socketio, ftp,
                 app.notify('resource-downloaded', {
                   
                   content: body,
-                  path: 'wp-content/uploads/' + year + '/' + month + '/' + file,
+                  path: path + file,
                   requester: requester
                 }, 'express-push-endpoint');
               }
@@ -276,3 +277,27 @@ var express, http, socketio, ftp,
       app.notify('ftp-credentials-loaded', ftpcredentials, 'fs-readfile');
     }      
   });
+
+
+// HELPER FUNCTIONS
+// ----------------
+
+function object_each( obj, process_each ){
+
+  var process_next;
+
+  // filter
+      if(Object.prototype.toString.call( obj ) !== '[object Object]' // obj is not an object
+      || (process_each && typeof process_each !== 'function') // process_each is set but isn't a function
+      ){ return false }
+
+  for( var key in obj ){
+
+    // skip inherited keys
+        if( !obj.hasOwnProperty(key) ){ continue; }
+
+    process_next = process_each( key, obj[key] );
+
+    if(process_next === false){ return; }
+  }
+}
