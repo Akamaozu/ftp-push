@@ -113,7 +113,7 @@
 
                     case 'active':
                         removeClass(wrapper, 'hidden');
-                        input.value = report.url;
+                        input.value = url;
                         break;
 
                     case 'disabled':
@@ -143,6 +143,17 @@
                     percent_downloaded = msg.notice + '%';
 
                 bar.style.width = percent_downloaded;
+            });
+
+        // upload progress bar
+            state.watch('interface-progress:upload-bar', 'upload-progress-bar', function(msg){
+
+                var percent_uploaded, bar;
+
+                    bar = document.getElementById('uploaded');
+                    percent_uploaded = msg.notice + '%';
+
+                bar.style.width = percent_uploaded;
             });
 
     // configure socket  
@@ -186,6 +197,7 @@
 
                     if(success){
 
+                        state.notify('interface-progress:upload-bar', 100);
                         state.notify('interface-progress:url-to-use', {state: 'active', url: report.url});
                     }
                 }
@@ -202,6 +214,8 @@
             new_filename = document.getElementById('filename').value;
 
         if(!url_to_push){ alert('you haven\'t given me a URL to push'); return; }
+
+        state.notify('interface-input:push-url-btn', 'disabled');
 
         socketio.emit('ftp-push', {resource: url_to_push, rename: new_filename});
     });

@@ -1,6 +1,6 @@
 var express, http, socketio, ftp, 
     fs, request, compression, noticeboard, path, mime, prettysize,
-    server, app, logger, io;
+    server, app, logger, queue, processing_queue, io;
 
     noticeboard = require('cjs-noticeboard');
     compression = require('compression');
@@ -19,6 +19,7 @@ var express, http, socketio, ftp,
 // configure app
     app = new noticeboard({logging: false});
     logger = new noticeboard();
+    queue = [];
 
     // pipe logger to console
         logger.watch('log-entry', 'node-console', function(msg){
@@ -79,7 +80,7 @@ var express, http, socketio, ftp,
                 report.completed = true;
                 report.msg = 'could not download it -- try again please';
                 
-                requester.emit('status', report);
+                requester.emit('status', (report) );
               }
 
               else{
@@ -101,11 +102,14 @@ var express, http, socketio, ftp,
                 
                 requester.emit('status', (report) );
 
+                delete report.msg;
+
                 app.notify('resource-downloaded', {
                   
                   content: body,
                   path: path + file,
-                  requester: requester
+                  requester: requester,
+                  size: total_size
                 }, 'express-push-endpoint');
               }
             }).on('response', function(response){
@@ -131,46 +135,74 @@ var express, http, socketio, ftp,
 
                 requester.emit('status', report);  
               }
-
-              logger.log('download: ' + downloaded_so_far + '/' + total_size);
             });
         });   
   
-    // do ftp-push
-        app.watch('resource-downloaded', 'ftp-pusher', function(msg){
+    // add request to queue
+        app.watch('resource-downloaded', 'app', function(msg){
 
-          var ftp_client, resource_struct;
+          var request_struct = msg.notice;
 
-          resource_struct = msg.notice;
-          ftp_client = new ftp();
+          queue.push(request_struct);
+
+          if(processing_queue !== true) app.notify('process-ftp-queue');
+        });
+  
+    // process push queue
+        app.watch('process-ftp-queue', 'ftp-pusher', function(){
+
+          var ftp_client, pusher;
+
+              pusher = new noticeboard();
+              ftp_client = new ftp();
+
+          processing_queue = true;
             
           ftp_client.on('ready', function(){
-
-            ftp_client.put( resource_struct.content, resource_struct.path, function(err) {
-              
-              if (err) throw err;
-              ftp_client.end();
-              
-              resource_struct.requester.emit('status', {
-
-                url: 'http://wadup.com.ng/' +  resource_struct.path,
-                msg: 'PUSH SUCCESSFUL!',
-                success: true,
-                completed: true
-              });
-
-            });
+            
+            pusher.notify('push-next');
           });
 
-          app.watch('ftp-credentials-loaded', 'ftp-pusher', function(message){
+          pusher.watch('push-next', 'ftp-pusher', function(){
 
-            var ftp, credentials;
-                ftp = message.watcher;
-                credentials = message.notice;
+            var resource_struct = queue.shift();
 
-            ftp.connect( credentials );
+            if(typeof resource_struct !== 'undefined'){
+              
+              logger.log('STARTING PUSH. BACKLOG - ' + (queue.length));
+              
+              ftp_client.put( resource_struct.content, resource_struct.path, function(err) {
+                
+                if (err) throw err;                   
+                
+                resource_struct.requester.emit('status', {
 
-          }, {useCache: true, message: ftp_client});
+                  url: 'http://wadup.com.ng/' +  resource_struct.path,
+                  msg: 'PUSH SUCCESSFUL!',
+                  success: true,
+                  completed: true
+                });
+
+                logger.log('PUSH SUCCESSFUL!');
+                pusher.notify('push-next');
+              });   
+            }
+
+            else{
+
+              ftp_client.end();
+              processing_queue = false;
+
+              if(queue.length > 0) app.notify('process-ftp-queue');
+            }            
+          });
+          
+          app.once('ftp-credentials-loaded', 'ftp-connect', function(ftp_msg){
+
+            var credentials = ftp_msg.notice;
+
+            ftp_client.connect( credentials );
+          },{useCache: true});
         });
 
     // process html request
@@ -264,7 +296,7 @@ var express, http, socketio, ftp,
                 request.requester = this_socket;
                 app.notify('push-request', request, 'socket.io');
 
-                logger.log('PUSH REQUEST:', {url: request.resource, rename: request.rename});
+                logger.log('* NEW PUSH REQUEST');
               });
         });
 

@@ -129,6 +129,7 @@ body{
 
       position: relative;
 
+      width: 95%;
       height: 1em;
       border-radius: .5em;
       background-color: #eee;
@@ -140,18 +141,23 @@ body{
 
         position: absolute;
         height: inherit;
+        width: 0;
+
+        -webkit-transition: width .4s ease-in;
+        -moz-transition: width .4s ease-in;
+        -ms-transition: width .4s ease-in;
+        -o-transition: width .4s ease-in;
+        transition: width .4s ease-in;
       }
 
       #update-wrapper #transfer-state > #downloaded {
 
         background-color: orange;
-        width: 0;
-
-        -webkit-transition: width .2s ease-in;
-        -moz-transition: width .2s ease-in;
-        -ms-transition: width .2s ease-in;
-        -o-transition: width .2s ease-in;
-        transition: width .2s ease-in;
-
         z-index: 2;
+      }
+
+      #update-wrapper #transfer-state > #uploaded {
+
+        background-color: limegreen;
+        z-index: 3;
       }
