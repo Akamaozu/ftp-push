@@ -1,6 +1,6 @@
 (function(){
 
-    var noticeboard, app, state, socketio;
+    var noticeboard, app, state, socketio, doing_push;
 
         noticeboard = require('cjs-noticeboard');
         socketio = require('socket.io-client')();
@@ -199,6 +199,7 @@
 
                         state.notify('interface-progress:upload-bar', 100);
                         state.notify('interface-progress:url-to-use', {state: 'active', url: report.url});
+                        doing_push = false;
                     }
                 }
 
@@ -214,6 +215,10 @@
             new_filename = document.getElementById('filename').value;
 
         if(!url_to_push){ alert('you haven\'t given me a URL to push'); return; }
+
+        if(doing_push === true){ return; }
+
+        doing_push = true;
 
         state.notify('interface-input:push-url-btn', 'disabled');
 
