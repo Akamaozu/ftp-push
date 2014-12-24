@@ -26,8 +26,18 @@
       </div>
 
       <div id="update-wrapper" class="hidden">
-        <label>FILE LOCATION ON YOUR SERVER</label>
-        <input id="url-to-use" />        
+
+        <div id='update-log'></div>
+
+        <div id="transfer-state">
+          <div id="downloaded"></div>
+          <div id="uploaded"></div>          
+        </div>
+
+        <div id='url-to-use-wrapper' class='hidden'>
+          <label>FILE LOCATION ON YOUR SERVER</label>
+          <input id="url-to-use"/>
+        </div>        
       </div>
 
     </div>

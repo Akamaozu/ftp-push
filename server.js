@@ -1,10 +1,11 @@
 var express, http, socketio, ftp, 
-    fs, request, compression, noticeboard, path, mime, 
+    fs, request, compression, noticeboard, path, mime, prettysize,
     server, app, logger, io;
 
     noticeboard = require('cjs-noticeboard');
     compression = require('compression');
     bodyparser = require('body-parser');
+    prettysize = require('prettysize');
     socketio = require('socket.io');
     express = require('express')();
     mime = require('mime-types');
@@ -44,7 +45,8 @@ var express, http, socketio, ftp,
         app.watch('push-request', 'ftp-pusher', function(msg){ 
 
           var request_struct, 
-              requester, resource, filename, total_size, downloaded_so_far,
+              requester, resource, filename, 
+              total_size, downloaded_so_far, downloaded_percent,
               report;
               
               report = {};
@@ -59,8 +61,10 @@ var express, http, socketio, ftp,
               resource = request_struct.resource;
 
           // update requester
-            report.msg = "downloading file to my server -- this may take a moment"
-            requester.emit('status', report);
+            report.msg = "downloading file to my server -- this may take a moment";            
+            requester.emit('status', (report) );
+
+            delete report.msg;
 
           // fetch remote resource
             request({
@@ -95,7 +99,7 @@ var express, http, socketio, ftp,
                 report.msg = 'downloaded to my server -- now pushing to yours';
                 report.url = 'http://wadup.com.ng/' + path + file;
                 
-                requester.emit('status', report);
+                requester.emit('status', (report) );
 
                 app.notify('resource-downloaded', {
                   
@@ -109,13 +113,26 @@ var express, http, socketio, ftp,
               downloaded_so_far = 0;
               total_size = response.headers['content-length'];
 
-              logger.log('total size: ' + total_size);
+              report.size = prettysize( total_size );
+
+              requester.emit('status', (report) );
             
             }).on('data', function(data){
 
               downloaded_so_far += data.length;
 
-              logger.log('progress: ' + downloaded_so_far + '/' + total_size + ' - ' + ((downloaded_so_far / total_size) * 100) + '%');
+              var progress_to_percent = ((downloaded_so_far / total_size) * 100).toFixed();
+
+              if(progress_to_percent !== downloaded_percent){
+
+                downloaded_percent = progress_to_percent;
+
+                report.downloaded = downloaded_percent;
+
+                requester.emit('status', report);  
+              }
+
+              logger.log('download: ' + downloaded_so_far + '/' + total_size);
             });
         });   
   

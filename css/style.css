@@ -67,7 +67,8 @@ body{
   }
 
     #task-wrapper input,
-    #update-wrapper input {
+    #update-wrapper input,
+    #update-wrapper #transfer-state {
 
       width: 85%;
       display: block;
@@ -123,3 +124,34 @@ body{
           background-color: #03862c;
           border-bottom-width: .11em;
         }
+
+    #update-wrapper #transfer-state {
+
+      position: relative;
+
+      height: 1em;
+      border-radius: .5em;
+      background-color: #eee;
+      padding: 0;
+      overflow: hidden;
+    }
+
+      #update-wrapper #transfer-state > div {
+
+        position: absolute;
+        height: inherit;
+      }
+
+      #update-wrapper #transfer-state > #downloaded {
+
+        background-color: orange;
+        width: 0;
+
+        -webkit-transition: width .2s ease-in;
+        -moz-transition: width .2s ease-in;
+        -ms-transition: width .2s ease-in;
+        -o-transition: width .2s ease-in;
+        transition: width .2s ease-in;
+
+        z-index: 2;
+      }
