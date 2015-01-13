@@ -42,7 +42,13 @@ var express, http, socketio, ftp,
                 }
         });
 
-    // handle ftp-push request
+    // handle ftp-push request    
+    /* UPGRADE: Externalize FTP Pusher to its own server
+        - DO NOT DOWNLOAD before dropping on queue
+        - pick requests from queue
+        - connect to client
+        - give client progress updates
+    */
         app.watch('push-request', 'ftp-pusher', function(msg){ 
 
           var request_struct, 
@@ -138,14 +144,19 @@ var express, http, socketio, ftp,
             });
         });   
   
-    // add request to queue
+    // add request to queue    
+    /* UPGRADE: Externalize Queue ... Redis or Something
+        - that way, we just need one server to process requests
+        - other servers are spun up to process requests on the queue
+        - they report to the client the progress of the job
+    */
         app.watch('resource-downloaded', 'app', function(msg){
 
           var request_struct = msg.notice;
 
           queue.push(request_struct);
 
-          if(processing_queue !== true) app.notify('process-ftp-queue');
+          if(processing_queue !== true) app.notify('process-ftp-queue');          
         });
   
     // process push queue
