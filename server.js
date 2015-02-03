@@ -1,14 +1,11 @@
 var express, http, socketio, ftp, 
     fs, compression, noticeboard, stream,
-    server, app, logger, queue, processing_queue, io;
+    server, app, logger, io;
 
-    readablestream = require('stream').Readable;
     noticeboard = require('cjs-noticeboard');
     compression = require('compression');
-    bodyparser = require('body-parser');
     socketio = require('socket.io');
     express = require('express')();
-    multer = require('multer');
     http = require('http');
     ftp = require('ftp');
     fs = require('fs');
@@ -16,7 +13,6 @@ var express, http, socketio, ftp,
 // configure app
     app = new noticeboard({logging: false});
     logger = new noticeboard();
-    queue = [];
 
     // pipe logger to console
         logger.watch('log-entry', 'node-console', function(msg){
@@ -190,24 +186,26 @@ var express, http, socketio, ftp,
 
                     request.head(resource).on('response', function(response){
 
-                      var prettysize, mime, filesize, file_extension, report;
+                      var prettysize, mime, filesize, pretty_filesize, file_extension, report;
 
                           prettysize = require('prettysize');
                           mime = require('mime-types');
 
                           filesize = response.headers['content-length'];
+                          pretty_filesize = prettysize( filesize );
                           file_extension = mime.extension( response.headers['content-type']);
               
                           report = {};
                           report.success = false;
                           report.completed = false;
 
-                      report.size = prettysize( filesize );
+                      report.size = pretty_filesize;
 
                       requester.emit('status', (report) );
                       delete report.size;
 
                       task.notify('file-size', filesize );
+                      task.notify('pretty-filesize', pretty_filesize );
                       task.notify('file-extension', file_extension );
                       task.notify('status-report', report );
 
@@ -287,13 +285,13 @@ var express, http, socketio, ftp,
                             
                             requester.emit('status', {
 
-                              url: 'http://wadup.com.ng' + filepath + '/' +  filename + '.' + extension,
+                              url: 'http://wadup.com.ng' + filepath +  filename + '.' + extension,
                               msg: 'PUSH SUCCESSFUL!',
                               success: true,
                               completed: true
                             });
 
-                            logger.log('* PUSH COMPLETED IN ' + (finish_time - start_time) + 'ms');
+                            logger.log('* PUSHED ' + task.cache['pretty-filesize'] + ' IN ' + (finish_time - start_time) + 'ms');
                           });
                   })
 
