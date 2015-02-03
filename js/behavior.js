@@ -19,7 +19,7 @@
                 var entry = msg.notice;
 
                 // filter
-                    if(typeof entry.length === 'undefined' || entry.length < 1){ return; }
+                    if(!console || typeof entry.length === 'undefined' || entry.length < 1){ return; }
 
                 // format output
                     switch(entry.length){
@@ -161,12 +161,14 @@
         // status reports from server
             socketio.on('status', function(report){
 
-                var success, completed, message;
+                var success, completed, message,
+                    size, downloaded, setup;
 
                     completed = report.completed;
                     success = report.success;
                     message = typeof report.msg !== 'undefined' ? report.msg : null;
                     size = typeof report.size !== 'undefined' ? report.size : null;
+                    setup = typeof report.setup !== 'undefined' ? report.setup : null;
                     downloaded = typeof report.downloaded !== 'undefined' ? report.downloaded : null;
 
                 if(state.cache['interface'] !== 'progress'){
@@ -175,24 +177,28 @@
 
                         alert( message );
                     }
-
-                    if(size !== null){
-
-                        state.notify('interface', 'progress');
-                        state.notify('interface-progress:log', '<p><b>SIZE: ' + size +'</b></p>');
-                    }
                 }
 
                 else{
+
+                    if(size !== null){
+
+                        state.notify('interface-progress:log', '<p><b>SIZE: ' + size +'</b></p>');
+                    }
 
                     if(message !== null){
 
                         state.notify('interface-progress:log', '<p>' + message + '</p>');
                     }
 
+                    if(setup !== null){
+
+                        state.notify('interface-progress:download-bar', setup);
+                    }
+
                     if(downloaded !== null || downloaded !== '100'){
 
-                        state.notify('interface-progress:download-bar', downloaded);
+                        state.notify('interface-progress:upload-bar', downloaded);
                     }
 
                     if(success){
@@ -221,6 +227,7 @@
         doing_push = true;
 
         state.notify('interface-input:push-url-btn', 'disabled');
+        state.notify('interface', 'progress');
 
         socketio.emit('ftp-push', {resource: url_to_push, rename: new_filename});
     });

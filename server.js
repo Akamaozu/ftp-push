@@ -1,18 +1,15 @@
 var express, http, socketio, ftp, 
-    fs, request, compression, noticeboard, path, mime, prettysize,
+    fs, compression, noticeboard, stream,
     server, app, logger, queue, processing_queue, io;
 
+    readablestream = require('stream').Readable;
     noticeboard = require('cjs-noticeboard');
     compression = require('compression');
     bodyparser = require('body-parser');
-    prettysize = require('prettysize');
     socketio = require('socket.io');
     express = require('express')();
-    mime = require('mime-types');
-    request = require('request');
     multer = require('multer');
     http = require('http');
-    path = require('path');
     ftp = require('ftp');
     fs = require('fs');
 
@@ -51,169 +48,257 @@ var express, http, socketio, ftp,
     */
         app.watch('push-request', 'ftp-pusher', function(msg){ 
 
-          var request_struct, 
-              requester, resource, filename, 
-              total_size, downloaded_so_far, downloaded_percent,
-              report;
-              
-              report = {};
-              report.completed = false;
-              report.success = false;
+          var task, task_order, current_task_index, request_struct,
+              start_time, finish_time;
 
               request_struct = msg.notice;
 
-              filename = request_struct.rename || path.basename(request_struct.resource);
-              filename = (filename + '_wadup_com_ng').replace(/[^a-zA-Z0-9]/g,'_').replace(/_{2,}/g,"_").toLowerCase();
-              requester = request_struct.requester;
-              resource = request_struct.resource;
+              start_time = Date.now();
 
-          // update requester
-            report.msg = "downloading file to my server -- this may take a moment";            
-            requester.emit('status', (report) );
+              task_order = [
 
-            delete report.msg;
+                'format-file-name',
+                'get-resource-data',
+                'ftp-connect',
+                'verify-destination-path',
+                'start-push'
+              ];
 
-          // fetch remote resource
-            request({
+          // CONFIGURE TASK
+              task = new noticeboard({logging: false});
 
-              url: resource,
-              encoding: null
+              // alias start-task
+                  task.once('start-task', 'ftp-push-task', function(){
 
-            }, function (error, response, body) {
-              
-              if(error){
-                
-                report.completed = true;
-                report.msg = 'could not download it -- try again please';
-                
-                requester.emit('status', (report) );
-              }
+                    var requester = request_struct.requester;
 
-              else{
+                    requester.emit('status', {msg: 'PREPARING TO PUSH'});
 
-                var now = new Date();
+                    current_task_index = 0;
 
-                var extension = mime.extension( response.headers['content-type'] );
+                    task.notify( task_order[ current_task_index ] );                    
+                  });
 
-                var year = now.getFullYear();
-                var month = now.getMonth() + 1;
-                    month = (month < 10 ? "0" : "") + month;
-                
-                var path = 'wp-content/uploads/' + year + '/' + month + '/';
-                var file = filename + '.' + extension;
+              // alias next-task
+                  task.watch('next-task', 'ftp-push-task', function(){
 
-                report.completed = false;
-                report.msg = 'downloaded to my server -- now pushing to yours';
-                report.url = 'http://wadup.com.ng/' + path + file;
-                
-                requester.emit('status', (report) );
+                    var requester, task_length; 
 
-                delete report.msg;
+                        requester = request_struct.requester;
+                        task_length = task_order.length;
+                        setup_length = task_length - 1;
 
-                app.notify('resource-downloaded', {
-                  
-                  content: body,
-                  path: path + file,
-                  requester: requester,
-                  size: total_size
-                }, 'express-push-endpoint');
-              }
-            }).on('response', function(response){
+                    current_task_index += 1;
 
-              downloaded_so_far = 0;
-              total_size = response.headers['content-length'];
+                    if(current_task_index > (task_length - 1)) return;
 
-              report.size = prettysize( total_size );
+                    if(current_task_index <= (setup_length - 1)){
 
-              requester.emit('status', (report) );
-            
-            }).on('data', function(data){
+                      requester.emit('status', {setup: ((current_task_index / (setup_length - 1)) * 100).toFixed() });
+                    }
 
-              downloaded_so_far += data.length;
+                    task.notify( task_order[ current_task_index ] );
+                  });
 
-              var progress_to_percent = ((downloaded_so_far / total_size) * 100).toFixed();
+              // setup task 'format-file-name'
+                  task.once('format-file-name', 'ftp-push-task', function(){
 
-              if(progress_to_percent !== downloaded_percent){
+                    var filename, path;
+                        
+                        path = require('path'); 
+                        
+                    // get file name
+                        filename = request_struct.rename || path.basename(request_struct.resource);
 
-                downloaded_percent = progress_to_percent;
+                    // lowercase file name
+                        filename = filename.toLowerCase();
 
-                report.downloaded = downloaded_percent;
+                    // append "tag"
+                        filename += '_wadup_com_ng';
 
-                requester.emit('status', report);  
-              }
-            });
-        });   
-  
-    // add request to queue    
-    /* UPGRADE: Externalize Queue ... Redis or Something
-        - that way, we just need one server to process requests
-        - other servers are spun up to process requests on the queue
-        - they report to the client the progress of the job
-    */
-        app.watch('resource-downloaded', 'app', function(msg){
+                    // replace special characters with underscore
+                        filename = filename.replace(/[^a-zA-Z0-9]/g,'_');
 
-          var request_struct = msg.notice;
+                    // remove concurrent underscores
+                        filename = filename.replace(/_{2,}/g,"_");
 
-          queue.push(request_struct);
+                    // store formatted name
+                        task.notify('file-name', filename);
 
-          if(processing_queue !== true) app.notify('process-ftp-queue');          
-        });
-  
-    // process push queue
-        app.watch('process-ftp-queue', 'ftp-pusher', function(){
+                    task.notify('next-task');
+                  });
 
-          var ftp_client, pusher;
+              // setup task 'ftp-connect'
+                  task.once('ftp-connect', 'ftp-push-task', function(){
 
-              pusher = new noticeboard();
-              ftp_client = new ftp();
+                    var ftp_client = new ftp();
 
-          processing_queue = true;
-            
-          ftp_client.on('ready', function(){
-            
-            pusher.notify('push-next');
-          });
-
-          pusher.watch('push-next', 'ftp-pusher', function(){
-
-            var resource_struct = queue.shift();
-
-            if(typeof resource_struct !== 'undefined'){
-              
-              logger.log('STARTING PUSH. BACKLOG - ' + (queue.length));
-              
-              ftp_client.put( resource_struct.content, resource_struct.path, function(err) {
-                
-                if (err) throw err;                   
-                
-                resource_struct.requester.emit('status', {
-
-                  url: 'http://wadup.com.ng/' +  resource_struct.path,
-                  msg: 'PUSH SUCCESSFUL!',
-                  success: true,
-                  completed: true
-                });
-
-                logger.log('PUSH SUCCESSFUL!');
-                pusher.notify('push-next');
-              });   
-            }
-
-            else{
-
-              ftp_client.end();
-              processing_queue = false;
-
-              if(queue.length > 0) app.notify('process-ftp-queue');
-            }            
-          });
+                    ftp_client.on('ready', function(){
+                      
+                      task.notify('ftp-client', ftp_client);
+                      task.notify('next-task');
+                    });
           
-          app.once('ftp-credentials-loaded', 'ftp-connect', function(ftp_msg){
+                    app.once('ftp-credentials-loaded', 'ftp-connect', function(ftp_msg){
 
-            var credentials = ftp_msg.notice;
+                      var credentials = ftp_msg.notice;
 
-            ftp_client.connect( credentials );
-          },{useCache: true});
+                      ftp_client.connect( credentials );
+                    },{useCache: true});
+                  });
+
+              // setup task: 'verify-destination-path'
+                  task.once('verify-destination-path', 'ftp-push-task', function(){
+
+                    var ftp_client, now, year, month, 
+                        path, path_index;
+
+                        ftp_client = task.cache['ftp-client'];
+
+                        now = new Date();
+                        year = now.getFullYear();
+                        month = now.getMonth() + 1;
+                        month = (month < 10 ? "0" : "") + month;
+                        
+                        path = '/wp-content/uploads/' + year + '/' + month + '/';
+
+                    ftp_client.mkdir(path, true, function(err){
+
+                      if(err){
+
+                        logger.log(err);                        
+                        ftp_client.end();
+                      }
+
+                      else {
+
+                        task.notify('file-path', path);
+                        task.notify('next-task');
+                      }
+                    });                      
+                  });
+
+              // setup task 'get-resource-data'
+                  task.once('get-resource-data', 'ftp-push-task', function(){
+
+                    var request, resource, requester;
+
+                        request = require('request');
+
+                        resource = request_struct.resource;
+                        requester = request_struct.requester;
+
+                    request.head(resource).on('response', function(response){
+
+                      var prettysize, mime, filesize, file_extension, report;
+
+                          prettysize = require('prettysize');
+                          mime = require('mime-types');
+
+                          filesize = response.headers['content-length'];
+                          file_extension = mime.extension( response.headers['content-type']);
+              
+                          report = {};
+                          report.success = false;
+                          report.completed = false;
+
+                      report.size = prettysize( filesize );
+
+                      requester.emit('status', (report) );
+                      delete report.size;
+
+                      task.notify('file-size', filesize );
+                      task.notify('file-extension', file_extension );
+                      task.notify('status-report', report );
+
+                      task.notify('next-task');
+                    });
+                  });
+
+              // setup task 'start-push'
+                  task.once('start-push', 'ftp-push-task', function(){
+
+                    var ftp_client, filepath, filename, extension,
+                        request, requester, resource,
+                        extension,
+                        total_size, bytes_downloaded, downloaded_percent,
+                        report;
+
+                        bytes_downloaded = 0;
+
+                        ftp_client = task.cache['ftp-client'];
+
+                        filepath = task.cache['file-path'];
+                        filename = task.cache['file-name'];
+                        extension = task.cache['file-extension'];
+                        total_size = task.cache['file-size'];
+                        report = task.cache['status-report'];
+
+                        request = require('request');
+
+                        requester = request_struct.requester;
+                        resource = request_struct.resource;
+
+                    // update requester
+                        report.msg = "PUSHING TO YOUR SERVER";            
+                        requester.emit('status', (report) );
+                        delete report.msg;
+
+                    // stream resource
+                        ftp_client.put(
+
+                            request({
+
+                              url: resource,
+                              encoding: null
+                            }, function (error, response, body) {
+                              
+                              if(error){
+                                
+                                report.completed = true;
+                                report.msg = 'could not download file -- try again please';
+                                
+                                requester.emit('status', (report) );
+                              }
+
+                            }).on('data', function(data){
+
+                              bytes_downloaded += data.length;
+
+                              var progress_to_percent = ((bytes_downloaded / total_size) * 100).toFixed();
+
+                              if(progress_to_percent !== downloaded_percent){
+
+                                downloaded_percent = progress_to_percent;
+
+                                report.downloaded = downloaded_percent;
+
+                                requester.emit('status', report);  
+                              }
+                          }), 
+
+                          filepath + '/' + filename + '.' + extension, function(err) {
+                            
+                            if (err) throw err;
+
+                            finish_time = Date.now();
+
+                            ftp_client.end();                  
+                            
+                            requester.emit('status', {
+
+                              url: 'http://wadup.com.ng' + filepath + '/' +  filename + '.' + extension,
+                              msg: 'PUSH SUCCESSFUL!',
+                              success: true,
+                              completed: true
+                            });
+
+                            logger.log('* PUSH COMPLETED IN ' + (finish_time - start_time) + 'ms');
+                          });
+                  })
+
+          // START TASK
+            task.notify('start-task');
         });
 
     // process html request
@@ -349,27 +434,3 @@ var express, http, socketio, ftp,
       app.notify('ftp-credentials-loaded', ftpcredentials, 'fs-readfile');
     }      
   });
-
-
-// HELPER FUNCTIONS
-// ----------------
-
-function object_each( obj, process_each ){
-
-  var process_next;
-
-  // filter
-      if(Object.prototype.toString.call( obj ) !== '[object Object]' // obj is not an object
-      || (process_each && typeof process_each !== 'function') // process_each is set but isn't a function
-      ){ return false }
-
-  for( var key in obj ){
-
-    // skip inherited keys
-        if( !obj.hasOwnProperty(key) ){ continue; }
-
-    process_next = process_each( key, obj[key] );
-
-    if(process_next === false){ return; }
-  }
-}
