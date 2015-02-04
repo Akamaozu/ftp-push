@@ -63,39 +63,6 @@ var express, http, socketio, ftp,
           // CONFIGURE TASK
               task = new noticeboard({logging: false});
 
-              // alias start-task
-                  task.once('start-task', 'ftp-push-task', function(){
-
-                    var requester = request_struct.requester;
-
-                    requester.emit('status', {msg: 'PREPARING TO PUSH'});
-
-                    current_task_index = 0;
-
-                    task.notify( task_order[ current_task_index ] );                    
-                  });
-
-              // alias next-task
-                  task.watch('next-task', 'ftp-push-task', function(){
-
-                    var requester, task_length; 
-
-                        requester = request_struct.requester;
-                        task_length = task_order.length;
-                        setup_length = task_length - 1;
-
-                    current_task_index += 1;
-
-                    if(current_task_index > (task_length - 1)) return;
-
-                    if(current_task_index <= (setup_length - 1)){
-
-                      requester.emit('status', {setup: ((current_task_index / (setup_length - 1)) * 100).toFixed() });
-                    }
-
-                    task.notify( task_order[ current_task_index ] );
-                  });
-
               // setup task 'format-file-name'
                   task.once('format-file-name', 'ftp-push-task', function(){
 
@@ -122,6 +89,8 @@ var express, http, socketio, ftp,
                         task.notify('file-name', filename);
 
                     task.notify('next-task');
+
+                    path = null;
                   });
 
               // setup task 'ftp-connect'
@@ -133,6 +102,20 @@ var express, http, socketio, ftp,
                       
                       task.notify('ftp-client', ftp_client);
                       task.notify('next-task');
+                      
+                      ftp_client = null;
+                    });
+
+                    ftp_client.on('error', function(err){
+
+                      var error = {};
+
+                          error.msg = "SOMETHING WENT WRONG WITH FTP";
+                          error.data = err;
+
+                      task.notify('task-failed', error);
+
+                      ftp_client = null;
                     });
           
                     app.once('ftp-credentials-loaded', 'ftp-connect', function(ftp_msg){
@@ -146,8 +129,7 @@ var express, http, socketio, ftp,
               // setup task: 'verify-destination-path'
                   task.once('verify-destination-path', 'ftp-push-task', function(){
 
-                    var ftp_client, now, year, month, 
-                        path, path_index;
+                    var ftp_client, now, year, month, path;
 
                         ftp_client = task.cache['ftp-client'];
 
@@ -156,14 +138,20 @@ var express, http, socketio, ftp,
                         month = now.getMonth() + 1;
                         month = (month < 10 ? "0" : "") + month;
                         
-                        path = '/wp-content/uploads/' + year + '/' + month + '/';
+                        path = '/domains/designbymobi.us/html/wp-content/uploads/' + year + '/' + month + '/';
 
                     ftp_client.mkdir(path, true, function(err){
-
+                      
                       if(err){
 
-                        logger.log(err);                        
+                        var error = {};
+
+                            error.msg = "FTP DESTINATION COULD NOT BE CREATED OR WRITTEN TO";
+                            error.data = err;
+
                         ftp_client.end();
+
+                        task.notify('task-failed', error);                      
                       }
 
                       else {
@@ -171,6 +159,8 @@ var express, http, socketio, ftp,
                         task.notify('file-path', path);
                         task.notify('next-task');
                       }
+
+                      ftp_client = null;
                     });                      
                   });
 
@@ -210,6 +200,16 @@ var express, http, socketio, ftp,
                       task.notify('status-report', report );
 
                       task.notify('next-task');
+
+                      request = resource = requester = null;
+                    }).on('error', function(err){
+
+                      var error = {};
+                          error.msg = "REQUEST FOR RESOURCE HEAD FAILED";
+                          error.data = err;
+
+                      task.notify('task-failed', error);
+                      request = resource = requester = null;
                     });
                   });
 
@@ -249,16 +249,6 @@ var express, http, socketio, ftp,
 
                               url: resource,
                               encoding: null
-                            }, function (error, response, body) {
-                              
-                              if(error){
-                                
-                                report.completed = true;
-                                report.msg = 'could not download file -- try again please';
-                                
-                                requester.emit('status', (report) );
-                              }
-
                             }).on('data', function(data){
 
                               bytes_downloaded += data.length;
@@ -273,27 +263,124 @@ var express, http, socketio, ftp,
 
                                 requester.emit('status', report);  
                               }
+                          }).on('error', function(err){
+
+                            var error = {};
+                                error.msg = "REQUEST FOR RESOURCE FAILED";
+                                error.data = err;
+
+                            task.notify('task-failed', error);
+
+                            ftp_client = request = requester = null;
                           }), 
 
                           filepath + '/' + filename + '.' + extension, function(err) {
                             
-                            if (err) throw err;
+                            ftp_client.end();
 
-                            finish_time = Date.now();
-
-                            ftp_client.end();                  
+                            ftp_client = request = requester = null;
                             
-                            requester.emit('status', {
+                            if(err){
+                              
+                              var error = {};
+                                  error.msg = "FTP PUT FAILED";
+                                  error.data = err;
 
-                              url: 'http://wadup.com.ng' + filepath +  filename + '.' + extension,
-                              msg: 'PUSH SUCCESSFUL!',
-                              success: true,
-                              completed: true
-                            });
+                              task.notify('task-failed', err);
+                            }
 
-                            logger.log('* PUSHED ' + task.cache['pretty-filesize'] + ' IN ' + (finish_time - start_time) + 'ms');
+                            else {
+
+                              task.notify('task-completed');                              
+                            }
                           });
-                  })
+                  });
+
+              // alias start-task
+                  task.once('start-task', 'ftp-push-task', function(){
+
+                    var requester = request_struct.requester;
+
+                    requester.emit('status', {msg: 'PREPARING TO PUSH'});
+
+                    current_task_index = 0;
+
+                    task.notify( task_order[ current_task_index ] );                    
+                  });
+
+              // alias next-task
+                  task.watch('next-task', 'ftp-push-task', function(){
+
+                    var requester, task_length; 
+
+                        requester = request_struct.requester;
+                        task_length = task_order.length;
+                        setup_length = task_length - 1;
+
+                    current_task_index += 1;
+
+                    if(current_task_index > (task_length - 1)) return;
+
+                    if(current_task_index <= (setup_length - 1)){
+
+                      requester.emit('status', {setup: ((current_task_index / (setup_length - 1)) * 100).toFixed() });
+                    }
+
+                    task.notify( task_order[ current_task_index ] );
+                  });
+
+              // alias task-completed
+                  task.once('task-completed', 'ftp-push-task', function(){
+
+                    var requester, filepath, filename, extension;
+
+                        requester = request_struct.requester;
+                        filepath = task.cache['file-path'];
+                        filename = task.cache['file-name'];
+                        extension = task.cache['file-extension'];
+
+                    finish_time = Date.now();                  
+                            
+                    requester.emit('status', {
+
+                      url: 'http://designbymobi.us' + filepath.replace('/domains/designbymobi.us/html', '') +  filename + '.' + extension,
+                      msg: 'PUSH SUCCESSFUL!',
+                      success: true,
+                      completed: true
+                    });
+
+                    logger.log('* PUSHED ' + task.cache['pretty-filesize'] + ' IN ' + (finish_time - start_time) + 'ms');
+
+                    task.notify('task-cleanup');
+                  });
+
+              // alias task-failed
+                  task.once('task-failed', 'ftp-push-task', function(payload){
+
+                    var requester, fail_details;
+
+                        requester = request_struct.requester;
+                        fail_details = payload.notice;
+
+                    requester.emit('status', {error: true, msg: fail_details.msg});
+
+                    logger.log( fail_details );
+
+                    task.notify('task-cleanup');
+                  });
+
+              // alias task-cleanup
+                  task.once('task-cleanup', 'ftp-push-task', function(){
+
+                    task = null;
+                    task_order = null;
+                    current_task_index = null;
+                    
+                    request_struct = null;
+                    
+                    start_time = null;
+                    finish_time = null;
+                  });
 
           // START TASK
             task.notify('start-task');
