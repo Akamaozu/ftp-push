@@ -506,16 +506,12 @@ var express, http, socketio, ftp,
     });
 
 // load ftp credentials
-  fs.readFile('./ftpcredentials.json', 'utf8', function(err, data){
-    if (err){
+    app.notify('ftp-credentials-loaded', {
       
-      logger.log('\nERROR: FTPCREDENTIALS NOT LOADED', '\n  | \n  |-> fs.readFile(\'./ftpcredentials.json\')\n\n', err); 
-      return; 
-    }
+      'host': process.env.FTP_HOST,
+      'port': process.env.FTP_PORT,
+      'user': process.env.FTP_USER,
+      'password': process.env.FTP_PASS
 
-    else {
-
-      var ftpcredentials = JSON.parse(data);
-      app.notify('ftp-credentials-loaded', ftpcredentials, 'fs-readfile');
-    }      
-  });
+    }, '.env');
+  
