@@ -4,6 +4,8 @@
 
         noticeboard = require('cjs-noticeboard');
         socketio = require('socket.io-client')();
+
+        require('./google-analytics.js');
         
     // init app
         app = new noticeboard();
