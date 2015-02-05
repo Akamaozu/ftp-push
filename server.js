@@ -336,15 +336,14 @@ var express, http, socketio, ftp,
                     var requester, filepath, filename, extension,
                         duration_ms, bytes_downloaded;
 
+                        finish_time = Date.now();                  
+                        duration_ms = finish_time - start_time;
+                        
                         requester = request_struct.requester;
                         filepath = task.cache['file-path'];
                         filename = task.cache['file-name'];
                         extension = task.cache['file-extension'];
                         bytes_downloaded = task.cache['bytes-downloaded'];
-
-                        duration_ms = finish_time - start_time;
-
-                    finish_time = Date.now();                  
                             
                     requester.emit('status', {
 
