@@ -291,6 +291,7 @@ var express, http, socketio, ftp,
 
                             else {
 
+                              task.notify('bytes-downloaded', bytes_downloaded);
                               task.notify('task-completed');                              
                             }
                           });
@@ -332,12 +333,16 @@ var express, http, socketio, ftp,
               // alias task-completed
                   task.once('task-completed', 'ftp-push-task', function(){
 
-                    var requester, filepath, filename, extension;
+                    var requester, filepath, filename, extension,
+                        duration_ms, bytes_downloaded;
 
                         requester = request_struct.requester;
                         filepath = task.cache['file-path'];
                         filename = task.cache['file-name'];
                         extension = task.cache['file-extension'];
+                        bytes_downloaded = task.cache['bytes-downloaded'];
+
+                        duration_ms = finish_time - start_time;
 
                     finish_time = Date.now();                  
                             
@@ -346,10 +351,12 @@ var express, http, socketio, ftp,
                       url: 'http://designbymobi.us' + filepath.replace('/domains/designbymobi.us/html', '') +  filename + '.' + extension,
                       msg: 'PUSH SUCCESSFUL!',
                       success: true,
-                      completed: true
+                      completed: true,
+                      duration: duration_ms / 1000,
+                      total_bytes: bytes_downloaded
                     });
 
-                    logger.log('* PUSHED ' + task.cache['pretty-filesize'] + ' IN ' + (finish_time - start_time) + 'ms');
+                    logger.log('* PUSHED ' + task.cache['pretty-filesize'] + ' IN ' + duration_ms + 'ms');
 
                     task.notify('task-cleanup');
                   });

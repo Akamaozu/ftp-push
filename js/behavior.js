@@ -162,14 +162,22 @@
             socketio.on('status', function(report){
 
                 var success, completed, message,
-                    size, downloaded, setup;
+                    size, downloaded, setup,
+                    bytes, duration;
 
                     completed = report.completed;
                     success = report.success;
+
                     message = typeof report.msg !== 'undefined' ? report.msg : null;
                     size = typeof report.size !== 'undefined' ? report.size : null;
                     setup = typeof report.setup !== 'undefined' ? report.setup : null;
                     downloaded = typeof report.downloaded !== 'undefined' ? report.downloaded : null;
+
+                if(success){
+                    
+                    bytes = typeof report.total_bytes !== 'undefined' ? report.total_bytes : null;
+                    duration = typeof report.duration !== 'undefined' ? report.duration : null;
+                }
 
                 if(state.cache['interface'] !== 'progress'){
 
@@ -203,6 +211,10 @@
 
                     if(success){
 
+                        ga('send', 'event', 'ftp-push', 'successful');
+                        ga('send', 'event', 'ftp-push', 'byte-size', bytes);
+                        ga('send', 'event', 'ftp-push', 'duration', duration);
+
                         state.notify('interface-progress:upload-bar', 100);
                         state.notify('interface-progress:url-to-use', {state: 'active', url: report.url});
                         doing_push = false;
@@ -225,6 +237,8 @@
         if(doing_push === true){ return; }
 
         doing_push = true;
+
+        ga('send', 'event', 'ftp-push', 'started');
 
         state.notify('interface-input:push-url-btn', 'disabled');
         state.notify('interface', 'progress');
