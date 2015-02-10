@@ -351,7 +351,7 @@ var express, http, socketio, ftp,
                       msg: 'PUSH SUCCESSFUL!',
                       success: true,
                       completed: true,
-                      duration: duration_ms / 1000,
+                      duration: duration_ms,
                       total_bytes: bytes_downloaded
                     });
 
