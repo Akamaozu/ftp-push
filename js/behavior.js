@@ -214,8 +214,8 @@
                     if(success){
 
                         ga('send', 'event', 'ftp-push', 'successful');
-                        ga('send', 'event', 'successful-push', 'statistics', 'bytes', bytes);
                         ga('send', 'event', 'successful-push', 'statistics', 'duration_ms', duration);
+                        ga('send', 'event', 'successful-push', 'statistics', 'megabytes', (bytes / 1000000).toFixed());
 
                         state.notify('interface-progress:upload-bar', 100);
                         state.notify('interface-progress:url-to-use', {state: 'active', url: report.url});
