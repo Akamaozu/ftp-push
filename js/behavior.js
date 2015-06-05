@@ -220,10 +220,10 @@
                         state.notify('interface-progress:upload-bar', 100);
                         state.notify('interface-progress:url-to-use', {state: 'active', url: report.url});
                         doing_push = false;
+
+                        socketio.disconnect();
                     }
                 }
-
-                app.log(report);
             });
 
 
