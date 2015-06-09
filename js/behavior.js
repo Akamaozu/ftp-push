@@ -3,7 +3,7 @@
     var noticeboard, app, state, socketio, doing_push;
 
         noticeboard = require('cjs-noticeboard');
-        socketio = require('socket.io-client')();
+        socketio = require('socket.io-client');
 
         require('./google-analytics.js');
         
@@ -158,74 +158,6 @@
                 bar.style.width = percent_uploaded;
             });
 
-    // configure socket  
-
-        // status reports from server
-            socketio.on('status', function(report){
-
-                var success, completed, message,
-                    size, downloaded, setup,
-                    bytes, duration;
-
-                    completed = report.completed;
-                    success = report.success;
-
-                    message = typeof report.msg !== 'undefined' ? report.msg : null;
-                    size = typeof report.size !== 'undefined' ? report.size : null;
-                    setup = typeof report.setup !== 'undefined' ? report.setup : null;
-                    downloaded = typeof report.downloaded !== 'undefined' ? report.downloaded : null;
-
-                if(success){
-                    
-                    bytes = typeof report.total_bytes !== 'undefined' ? report.total_bytes : null;
-                    duration = typeof report.duration !== 'undefined' ? report.duration : null;
-                }
-
-                if(state.cache['interface'] !== 'progress'){
-
-                    if(message !== null){
-
-                        alert( message );
-                    }
-                }
-
-                else{
-
-                    if(size !== null){
-
-                        state.notify('interface-progress:log', '<p><b>SIZE: ' + size +'</b></p>');
-                    }
-
-                    if(message !== null){
-
-                        state.notify('interface-progress:log', '<p>' + message + '</p>');
-                    }
-
-                    if(setup !== null){
-
-                        state.notify('interface-progress:download-bar', setup);
-                    }
-
-                    if(downloaded !== null || downloaded !== '100'){
-
-                        state.notify('interface-progress:upload-bar', downloaded);
-                    }
-
-                    if(success){
-
-                        ga('send', 'event', 'ftp-push', 'successful');
-                        ga('send', 'event', 'successful-push', 'statistics', 'duration-secs', Math.round(duration / 1000) );
-                        ga('send', 'event', 'successful-push', 'statistics', 'size-mb', Math.round(bytes / 1000000) );
-
-                        state.notify('interface-progress:upload-bar', 100);
-                        state.notify('interface-progress:url-to-use', {state: 'active', url: report.url});
-                        doing_push = false;
-
-                        socketio.disconnect();
-                    }
-                }
-            });
-
 
     document.getElementById('push-url').addEventListener('click', function(){
         
@@ -239,6 +171,9 @@
         if(doing_push === true){ return; }
 
         doing_push = true;
+
+        socketio = socketio(); // start socket.io connection
+        socketio.on('status', process_socketio_status_report);
 
         ga('send', 'event', 'ftp-push', 'started');
 
@@ -254,6 +189,72 @@
 
         this_input.select();
     });
+
+// process socket.io status report
+    function process_socketio_status_report( report ){
+
+        var success, completed, message,
+            size, downloaded, setup,
+            bytes, duration;
+
+            completed = report.completed;
+            success = report.success;
+
+            message = typeof report.msg !== 'undefined' ? report.msg : null;
+            size = typeof report.size !== 'undefined' ? report.size : null;
+            setup = typeof report.setup !== 'undefined' ? report.setup : null;
+            downloaded = typeof report.downloaded !== 'undefined' ? report.downloaded : null;
+
+        if(success){
+            
+            bytes = typeof report.total_bytes !== 'undefined' ? report.total_bytes : null;
+            duration = typeof report.duration !== 'undefined' ? report.duration : null;
+        }
+
+        if(state.cache['interface'] !== 'progress'){
+
+            if(message !== null){
+
+                alert( message );
+            }
+        }
+
+        else{
+
+            if(size !== null){
+
+                state.notify('interface-progress:log', '<p><b>SIZE: ' + size +'</b></p>');
+            }
+
+            if(message !== null){
+
+                state.notify('interface-progress:log', '<p>' + message + '</p>');
+            }
+
+            if(setup !== null){
+
+                state.notify('interface-progress:download-bar', setup);
+            }
+
+            if(downloaded !== null || downloaded !== '100'){
+
+                state.notify('interface-progress:upload-bar', downloaded);
+            }
+
+            if(success){
+
+                ga('send', 'event', 'ftp-push', 'successful');
+                ga('send', 'event', 'successful-push', 'statistics', 'duration-secs', Math.round(duration / 1000) );
+                ga('send', 'event', 'successful-push', 'statistics', 'size-mb', Math.round(bytes / 1000000) );
+
+                state.notify('interface-progress:upload-bar', 100);
+                state.notify('interface-progress:url-to-use', {state: 'active', url: report.url});
+                doing_push = false;
+
+                socketio.disconnect();
+            }
+        }
+    }
 
 // check if class exists
     function hasClass(element, nameOfClass){
